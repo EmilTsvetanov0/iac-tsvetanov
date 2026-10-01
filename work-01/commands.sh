@@ -46,11 +46,8 @@ systemctl status nginx
 sudo sed -i "s|Welcome to nginx!|cloudlab on $(hostname)|g" \
   /var/www/html/index.nginx-debian.html
 
-9. Использовалась команда, которая показывает остановленные машины, т.к. вм прерываемая и может быть остановлена
-yc compute instance list --format json \
-  | jq -r '.[] | select(.status != "RUNNING") | .name'
 
-10. Удалил ресурсы
+9. Удалил ресурсы
 yc compute instance delete "$PREFIX-web-1"
 yc compute instance delete "$PREFIX-web-manual"
 yc vpc subnet delete "$PREFIX-subnet"
