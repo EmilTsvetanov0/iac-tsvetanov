@@ -63,3 +63,23 @@ yc compute instance attach-disk "$PREFIX-app-1" \
   --disk-name "$PREFIX-data" \
   --device-name data \
   --auto-delete=false
+
+echo "==> целевая группа"
+# собираем список машин: имя подсети и внутренний адрес каждой
+TARGETS=""
+for i in $(seq 1 "$VM_COUNT"); do
+ idx=$(( (i - 1) % 2 ))
+ IP=$(yc compute instance get "$PREFIX-app-$i" --format json \
+ | jq -r '.network_interfaces[0].primary_v4_address.address')
+ TARGETS="$TARGETS --target subnet-name=${SUBNETS[$idx]},address=$IP"
+done
+yc load-balancer target-group create --name "$PREFIX-tg" $TARGETS
+
+echo "==> балансировщик"
+# идентификатор целевой группы: балансировщик ссылается на неё по нему
+TG_ID=$(yc load-balancer target-group get --name "$PREFIX-tg" --format json | jq -r .id)
+yc load-balancer network-load-balancer create \
+ --name "$PREFIX-lb" \
+ --region-id ru-central1 \
+ --listener name=http,port=80,target-port="$APP_PORT",external-ip-version=ipv4 \
+ --target-group target-group-id="$TG_ID",healthcheck-name=http,healthcheck-interval=2s,healthcheck-timeout=1s,healthcheck-unhealthythreshold=2,healthcheck-healthythreshold=2,healthcheck-http-port="$APP_PORT",healthcheck-http-path=/
